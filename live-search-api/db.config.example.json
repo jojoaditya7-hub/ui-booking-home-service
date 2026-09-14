@@ -1,0 +1,10 @@
+{
+  "host": "10.10.108.20",
+  "port": 65432,
+  "user": "ISI_USERNAME_DB",
+  "password": "ISI_PASSWORD_DB",
+  "customerDb": "SNEMESIAGEN_CUSTOMER",
+  "sirisDb": "SIRIS",
+  "psql": "C:\\Program Files\\PostgreSQL\\17\\bin\\psql.exe",
+  "port_api": 5180
+}

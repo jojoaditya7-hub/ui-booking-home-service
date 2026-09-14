@@ -1,0 +1,14 @@
+# Kredensial DB — JANGAN di-commit (pakai db.config.example.json sebagai template)
+live-search-api/db.config.json
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
