@@ -3094,6 +3094,15 @@ function viewBinding(){
     subHead('C. Informasi Kendaraan / STNK') +
     '<p style="margin:0 0 8px">Sumber pencarian: <b><code>SNEMESIAGEN_CUSTOMER.dbo.mstvehicle</code></b> (database & tabel terpisah dari SIRIS). ' +
       'Nilai yang di-load diperkaya dari SIRIS lewat <code>mstvehicle.motorid &rarr; dbo.mstmotor.id</code> dan <code>mstvehicle.motorcolorid &rarr; dbo.mstcolor.id</code>.</p>' +
+    '<div style="margin:8px 0 4px;padding:12px 14px;border:1px solid var(--warning);background:var(--warning-bg);border-radius:10px">' +
+      '<div style="font-weight:700;margin-bottom:6px">Data contoh untuk uji coba (versi hosting / saat API pencarian mati)</div>' +
+      '<p style="margin:0 0 8px">Di URL hosting (GitHub Pages) API pencarian tidak aktif &mdash; muncul badge oranye <b>"API pencarian tidak aktif - memakai data contoh"</b> &mdash; sehingga pencarian memakai <b>data contoh</b> bawaan. Untuk mencoba, ketik salah satu nilai berikut sesuai mode pencarian (<b>Plat Nomor</b> / <b>Nomor Mesin</b> / <b>Nomor Rangka</b>). Pencarian ke data ASLI dari database hanya jalan bila <code>live-search-api/server.js</code> dijalankan lokal dan terhubung ke DB.</p>' +
+      '<table><thead><tr><th>Plat Nomor</th><th>Nomor Mesin</th><th>Nomor Rangka</th><th>Unit (Market Name)</th></tr></thead><tbody>' +
+        '<tr><td><code>L 1234 ABC</code></td><td><code>JFDE1E1234567</code></td><td><code>MH1JFD119LK123456</code></td><td>VARIO 125 CBS ISS</td></tr>' +
+        '<tr><td><code>L 5678 XYZ</code></td><td><code>KF11E7654321</code></td><td><code>MH1KF1119PK654321</code></td><td>PCX 160 CBS</td></tr>' +
+        '<tr><td><code>N 4321 DEF</code></td><td><code>JM01E1122334</code></td><td><code>MH1JM0119MK112233</code></td><td>SCOOPY STYLUS</td></tr>' +
+      '</tbody></table>' +
+    '</div>' +
     ruleTable([
       ['Alur pencarian unit (Nopol/Mesin/Rangka)', '<b>Input langsung di kotak atas</b> (bukan combo). Ketik &ge; 4 karakter &rarr; <b>suggestion muncul di bawah kotak</b>. Pilih suggestion &rarr; nilainya <b>masuk ke kotak input</b> (data BELUM di-load). Baru setelah klik tombol <b>Cari</b> data di-load &amp; mengisi field di bawah. Enter di kotak input = klik Cari. Khusus 3 pencarian ini; dropdown lain (Kode Tipe Unit/Warna/Geo) tetap combo biasa.', 'Hint: "Ketik minimal 4 karakter untuk mencari"'],
       ['Pilih suggestion vs tombol Cari', 'Memilih suggestion hanya mengisi kotak + menandai unit terpilih (<code>selectedUnitId</code>). <b>Cari</b> me-load unit terpilih itu persis (penting utk <b>plat kembar</b> spt AA 2022 BB); bila belum memilih, Cari mengambil hasil terbaik dari pencarian teks. Mengetik ulang membatalkan pilihan sebelumnya.', '&mdash;'],
