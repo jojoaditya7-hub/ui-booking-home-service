@@ -2424,6 +2424,11 @@ export default function BookingHomeService() {
   const pickSvcPkg = (code) => { setSvcPkg(code); setSvcPkgOpen(false); setSvcSel([]); setSvcSearch(""); };
   const toggleSvcSel = (code) => setSvcSel((a) => (a.includes(code) ? a.filter((c) => c !== code) : [...a, code]));
   const saveAddService = () => {
+    const newCodes = svcSel.filter((code) => !form.serviceitems.some((s) => s.code === code));
+    const addedOil = newCodes.some((code) => {
+      const s = MST_SERVICE.find((x) => x.code === code);
+      return s && /ganti oli/i.test(s.name);
+    });
     setForm((f) => {
       const add = svcSel
         .filter((code) => !f.serviceitems.some((s) => s.code === code))
@@ -2434,7 +2439,8 @@ export default function BookingHomeService() {
         });
       return { ...f, serviceitems: [...f.serviceitems, ...add] };
     });
-    setAddModal(null);
+    if (addedOil) openAddPart(); // Ganti oli plus -> langsung buka pop-up pilih part OIL
+    else setAddModal(null);
   };
   const removeService = (code) => setForm((f) => ({ ...f, serviceitems: f.serviceitems.filter((s) => s.code !== code) }));
   const openAddPart = () => { setPartSearch(""); setPartSel([]); setAddModal("part"); };
