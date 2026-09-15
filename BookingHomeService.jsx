@@ -1315,6 +1315,7 @@ const UNITS = [
     assemblyyear: "2023",
     marketname: "VARIO 125 CBS ISS",
     colorcode: "11",
+    motorsegment: "MATIC", motorcategory: "MID",
     stnk: {
       fullname: "Andi Pratama", firstname: "Andi", lastname: "Pratama", nik: "3578011203900001",
       address1: "Jl. Airlangga No. 12", address2: "RT 03/RW 05", postalcode: "60286",
@@ -1331,6 +1332,7 @@ const UNITS = [
     assemblyyear: "2024",
     marketname: "PCX 160 CBS",
     colorcode: "44",
+    motorsegment: "MATIC", motorcategory: "HIGH",
     stnk: {
       fullname: "Rina Kusuma", firstname: "Rina", lastname: "Kusuma", nik: "3515024506920002",
       address1: "Jl. Kutilang No. 7", address2: "RT 01/RW 02", postalcode: "61256",
@@ -1347,6 +1349,7 @@ const UNITS = [
     assemblyyear: "2022",
     marketname: "SCOOPY STYLUS",
     colorcode: "55",
+    motorsegment: "MATIC", motorcategory: "LOW",
     stnk: {
       fullname: "Bagus Santoso", firstname: "Bagus", lastname: "Santoso", nik: "3573010101880003",
       address1: "Jl. Ijen No. 45", address2: "RT 02/RW 01", postalcode: "65119",
@@ -1385,6 +1388,9 @@ const MST_SERVICE_PKG = [
   { code: "11", name: "Ganti oli plus", estimatetime: 20 },
   { code: "09", name: "Heavy repair", estimatetime: 90 },
 ];
+// DUMMY setting: daftar jobid paket yang BOLEH muncul di "Tambah Pekerjaan Home Service".
+// Di REAL: ambil dari SNEMESIAGEN_SETTING.dbo.mstsettingsdmsdtl (JOIN mstsettingsdms) per dealer (nmscode), tag1=jobid, isactive=true.
+const HS_ALLOWED_PKG = ["06", "07", "11"]; // sementara: Paket Lengkap, Paket ringan, Ganti oli plus
 // LEVEL 2: variant service = dbo.mstservice (pkgcode=servicepackage.jobid; name memuat segment-category).
 // Di real: difilter oleh segment & category motor kendaraan booking (mstmotor.gvsegmentid/gvcategoryid); harga dari mstserviceprice.
 const MST_SERVICE = [
@@ -1395,6 +1401,8 @@ const MST_SERVICE = [
   { code: "07U03102", pkgcode: "07", segment: "MATIC", category: "MID", name: "Paket ringan - MATIC - MID", price: 55000, discount: 10000, duration: 20 },
   { code: "07U03202", pkgcode: "07", segment: "MATIC", category: "HIGH", name: "Paket ringan - MATIC - HIGH", price: 60000, discount: 0, duration: 20 },
   { code: "11U03101", pkgcode: "11", segment: "MATIC", category: "MID", name: "Ganti oli plus - MATIC - MID", price: 35000, discount: 5000, duration: 20 },
+  { code: "11U03301", pkgcode: "11", segment: "MATIC", category: "LOW", name: "Ganti oli plus - MATIC - LOW", price: 32000, discount: 0, duration: 20 },
+  { code: "11U03201", pkgcode: "11", segment: "MATIC", category: "HIGH", name: "Ganti oli plus - MATIC - HIGH", price: 38000, discount: 0, duration: 20 },
   { code: "09U03102", pkgcode: "09", segment: "MATIC", category: "MID", name: "Heavy repair - MATIC - MID", price: 150000, discount: 0, duration: 90 },
   { code: "07U01102", pkgcode: "07", segment: "CUB", category: "MID", name: "Paket ringan - CUB - MID", price: 45000, discount: 0, duration: 20 },
   { code: "07U02102", pkgcode: "07", segment: "SPORT", category: "MID", name: "Paket ringan - SPORT - MID", price: 65000, discount: 0, duration: 20 },
@@ -3364,10 +3372,13 @@ export default function BookingHomeService() {
         (() => {
           const q = svcSearch.trim().toLowerCase();
           const pkg = MST_SERVICE_PKG.find((p) => p.code === svcPkg);
-          let pkgs = MST_SERVICE_PKG;
-          if (q) pkgs = pkgs.filter((p) => p.name.toLowerCase().includes(q));
           const seg = form.motorsegment || "MATIC";
           const catg = form.motorcategory || "MID";
+          // Hanya paket yg DIIZINKAN setting (HS_ALLOWED_PKG) & masih punya variant tersedia utk unit ini (variant sudah dipilih -> paket ikut hilang)
+          let pkgs = MST_SERVICE_PKG.filter(
+            (p) => HS_ALLOWED_PKG.includes(p.code) && MST_SERVICE.some((s) => s.pkgcode === p.code && s.segment === seg && s.category === catg && !form.serviceitems.some((x) => x.code === s.code)),
+          );
+          if (q) pkgs = pkgs.filter((p) => p.name.toLowerCase().includes(q));
           let vars = MST_SERVICE.filter((s) => s.pkgcode === svcPkg && s.segment === seg && s.category === catg && !form.serviceitems.some((x) => x.code === s.code));
           if (q) vars = vars.filter((s) => `${s.name} ${s.code}`.toLowerCase().includes(q));
           return (
