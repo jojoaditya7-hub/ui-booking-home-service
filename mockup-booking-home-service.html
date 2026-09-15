@@ -1628,6 +1628,14 @@ const MST_PART = [
   { code:'15400KVBJ01', name:'Filter Oli', price:22000, stock:12 }, { code:'31916KVBJ01', name:'Busi Standar (CPR9)', price:25000, stock:30 },
   { code:'23100KVBJ01', name:'V-Belt CVT', price:120000, stock:6 }, { code:'22123KVBJ01', name:'Roller CVT (set)', price:85000, stock:8 },
 ];
+// DUMMY part grup OIL + mapping ke unit (seolah SIRIS.dbo.mstpartkendaraan sudah terisi).
+// Di REAL: mstpartkendaraan (kodetwodigit = Kode Tipe Unit) JOIN mstpart JOIN mstpartgroup (name='OIL'); harga dari mstpricepart.
+// units[] = daftar Kode Tipe Unit (twodigitcode) yang ter-mapping ke part OIL ini.
+const MST_PART_OIL = [
+  { code:'08232-M99-K1LN0', name:'AHM Oil MPX2 SAE 10W-30 0.8L', price:52000, group:'OIL', units:['VG','KF','JM'] },
+  { code:'08234-M99-N0LN0', name:'AHM Oil SPX2 SAE 10W-30 0.8L', price:58000, group:'OIL', units:['VG','KF'] },
+  { code:'08232-M99-M1LN0', name:'AHM Oil MPX1 SAE 10W-30 1.0L', price:63000, group:'OIL', units:['KF'] },
+];
 
 /* =========================================================
    i18n - key persis dipakai juga di BookingHomeService.jsx
@@ -2561,8 +2569,17 @@ function modalAddService(){
 }
 function modalAddPart(){
   const q = S.partSearch.trim().toLowerCase();
-  let list = MST_PART.filter(p => !S.form.partitems.some(x => x.code === p.code));
+  // Mode OIL: bila jasa "Ganti oli plus" ada di daftar service -> hanya tampilkan part grup OIL
+  // yang ter-mapping ke Kode Tipe Unit kendaraan (dummy MST_PART_OIL; real: mstpartkendaraan + mstpartgroup name='OIL').
+  const oilMode = S.form.serviceitems.some(s => /ganti oli/i.test(s.name));
+  const kode = S.form.twodigitcode || '';
+  let list = oilMode
+    ? MST_PART_OIL.filter(p => p.units.includes(kode) && !S.form.partitems.some(x => x.code === p.code))
+    : MST_PART.filter(p => !S.form.partitems.some(x => x.code === p.code));
   if (q) list = list.filter(p => (p.name + ' ' + p.code).toLowerCase().includes(q));
+  const oilNote = oilMode
+    ? '<div class="hint" style="margin:10px 0 0;padding:8px 12px;border:1px solid var(--warning);background:var(--warning-bg);border-radius:8px">Mode <b>Ganti oli plus</b>: hanya part grup <b>OIL</b> yang ter-mapping ke unit <b>' + esc(kode || '-') + '</b> (cek <code>mstpartkendaraan</code>).</div>'
+    : '';
   const body = list.length
     ? '<div class="pkgrid">' + list.map(p => pkCard(p,
         esc(p.code) + '<span class="dot"></span>' + ic('coins', 14) + rp(p.price),
@@ -2571,6 +2588,7 @@ function modalAddPart(){
   return '<div class="ovl" onclick="closeModal()"><div class="modal modal-lg" onclick="event.stopPropagation()">' +
     modalHead(t('booking.part.title'), t('booking.part.subtitle')) +
     '<div class="pkbar"><div class="pksearch">' + ic('search', 15) + '<input id="f-partsearch" placeholder="' + esc(t('booking.part.search')) + '" value="' + esc(S.partSearch) + '" oninput="setPartSearch(this.value)"></div></div>' +
+    oilNote +
     body +
     modalFoot('saveAddPart', S.partSel.length) +
   '</div></div>';
@@ -3164,6 +3182,7 @@ function viewBinding(){
       ['Sumber service (DB: SNEMESIAGEN_SERVICE)', 'Query LEVEL 2: <code>dbo.mstservice sv JOIN dbo.mstservicepackage p ON sv.servicepackageid=p.id</code> (paket dipilih) <code>JOIN dbo.mstmotor mo ON sv.gvmotorsegment=mo.gvsegmentid AND sv.gvmotorcategory=mo.gvcategoryid</code> (motor kendaraan booking). <b>PENTING &mdash; penamaan di <code>mstmotor</code> TERBALIK (sudah diverifikasi ke DB 15 Sep 2026):</b> kolom <code>segmentname</code> berisi <b>LOW/MID/HI = tingkatan</b> (yang di FE disebut <b>category</b> Low/Mid/High), kolom <code>categoryname</code> berisi <b>AT/CUB/SPORT/EV = jenis motor</b> (yang di FE disebut <b>segment</b>; <b>AT = Matic</b>, <b>HI = High</b>). Maka pemetaannya: FE <b>segment</b> &rarr; <code>mo.gvcategoryid</code> (= <code>sv.gvmotorcategory</code>); FE <b>category</b> &rarr; <code>mo.gvsegmentid</code> (= <code>sv.gvmotorsegment</code>). <b>Harga = <code>dbo.mstserviceprice.price</code></b> (join <code>serviceid=sv.id</code>, scope <code>gvappliesto</code>). <b>Estimasi waktu (Menit) = <code>dbo.mstservicepackage.estimatetime</code></b> (level paket). <b>Discount TIDAK ditampilkan.</b> <b>CATATAN DATA: <code>mstservice</code> &amp; <code>mstserviceprice</code> saat ini masih KOSONG (0 baris) &mdash; BE wajib mengisi variant + harga; <code>mstservicepackage</code> (23 baris) &amp; <code>mstmotor</code> (1006) sudah terisi.</b>', '&mdash;'],
       ['Service Light Repair (auto)', '<b>Light repair TIDAK muncul di pilihan paket.</b> Jasa Light repair otomatis ter-load ke daftar service saat memilih <b>part yang sudah di-mapping</b> ke jasa Light repair (mapping part &rarr; service; belum diimplementasi di mockup).', '&mdash;'],
       ['Spare Part', 'Tombol <b>Tambah Part</b> &rarr; buka modal "Tambah Part": search + pilih kartu part (multi), klik <b>Simpan</b>. Item spare part yang <b>dibawa mekanik ke rumah customer</b> masuk daftar dengan <b>qty</b> (stepper &minus;/+), subtotal = harga &times; qty (tanpa discount), bisa dihapus.', '&mdash;'],
+      ['Part OIL saat Ganti oli plus (DB: SIRIS)', 'Bila jasa <b>Ganti oli plus</b> ada di daftar service, picker Tambah Part <b>hanya menampilkan part grup OIL yang ter-mapping ke unit</b>. Query: <code>dbo.mstpartkendaraan pk JOIN dbo.mstpart p ON p.id=pk.partid JOIN dbo.mstpartgroup g ON g.id=p.partgroupid</code>, filter <code>pk.kodetwodigit = &lt;Kode Tipe Unit booking&gt;</code> (mis. VG/KF/JM) <b>AND <code>upper(g.name)=\x27OIL\x27</code></b> (jangan pakai <code>partgroupcode</code> karena ada grup OIL duplikat: code OIL/00231/TRY11). Harga = <code>dbo.mstpricepart.unitpricerpt</code> (partcode, ambil <code>effectivedate</code> terbaru; per dealer: <code>mstpricepartdealer</code>). <b>CATATAN DATA: <code>mstpartkendaraan</code> masih KOSONG (0 baris) &mdash; BE wajib mengisi mapping unit&harr;part; grup OIL juga perlu dirapikan (duplikat). Di mockup disimulasikan <code>MST_PART_OIL</code> (units[] = daftar kodetwodigit).</b>', '&mdash;'],
       ['Master service/part', 'Di mockup memakai data DUMMY (MST_SERVICE per kategori + MST_PART). Siap dibinding ke tabel master service &amp; part beserta harga/durasi/stok (part tanpa discount).', '&mdash;'],
       ['Navigasi', '<b>Kembali</b> &rarr; Langkah 1 (data tidak hilang). <b>Lanjut ke Ringkasan</b> &rarr; Langkah 3 (belum dibuat) &mdash; validasi mekanik utama dulu.', '&mdash;'],
     ]) +

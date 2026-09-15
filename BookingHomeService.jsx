@@ -1416,6 +1416,14 @@ const MST_PART = [
   { code: "23100KVBJ01", name: "V-Belt CVT", price: 120000 },
   { code: "22123KVBJ01", name: "Roller CVT (set)", price: 85000 },
 ];
+// DUMMY part grup OIL + mapping ke unit (seolah SIRIS.dbo.mstpartkendaraan sudah terisi).
+// Di REAL: mstpartkendaraan (kodetwodigit = Kode Tipe Unit) JOIN mstpart JOIN mstpartgroup (name='OIL'); harga dari mstpricepart.
+// units[] = daftar Kode Tipe Unit (twodigitcode) yang ter-mapping ke part OIL ini.
+const MST_PART_OIL = [
+  { code: "08232-M99-K1LN0", name: "AHM Oil MPX2 SAE 10W-30 0.8L", price: 52000, group: "OIL", units: ["VG", "KF", "JM"] },
+  { code: "08234-M99-N0LN0", name: "AHM Oil SPX2 SAE 10W-30 0.8L", price: 58000, group: "OIL", units: ["VG", "KF"] },
+  { code: "08232-M99-M1LN0", name: "AHM Oil MPX1 SAE 10W-30 1.0L", price: 63000, group: "OIL", units: ["KF"] },
+];
 const rp = (n) => "Rp " + (Number(n) || 0).toLocaleString("id-ID");
 
 /* ------------------------------------------------------------------
@@ -3493,7 +3501,13 @@ export default function BookingHomeService() {
       {addModal === "part" &&
         (() => {
           const q = partSearch.trim().toLowerCase();
-          let list = MST_PART.filter((p) => !form.partitems.some((x) => x.code === p.code));
+          // Mode OIL: bila jasa "Ganti oli plus" ada di daftar service -> hanya part grup OIL yg ter-mapping
+          // ke Kode Tipe Unit (dummy MST_PART_OIL; real: mstpartkendaraan + mstpartgroup name='OIL').
+          const oilMode = form.serviceitems.some((s) => /ganti oli/i.test(s.name));
+          const kode = form.twodigitcode || "";
+          let list = oilMode
+            ? MST_PART_OIL.filter((p) => p.units.includes(kode) && !form.partitems.some((x) => x.code === p.code))
+            : MST_PART.filter((p) => !form.partitems.some((x) => x.code === p.code));
           if (q) list = list.filter((p) => `${p.name} ${p.code}`.toLowerCase().includes(q));
           return (
             <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/45 p-6" onClick={() => setAddModal(null)}>
@@ -3518,6 +3532,11 @@ export default function BookingHomeService() {
                     <Search size={15} className="pointer-events-none absolute right-3 text-slate-400" />
                   </div>
                 </div>
+                {oilMode && (
+                  <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-[13px] text-amber-800">
+                    Mode <b>Ganti oli plus</b>: hanya part grup <b>OIL</b> yang ter-mapping ke unit <b>{kode || "-"}</b> (cek <code>mstpartkendaraan</code>).
+                  </div>
+                )}
                 {list.length ? (
                   <div className="grid grid-cols-2 gap-3">
                     {list.map((p) => {
