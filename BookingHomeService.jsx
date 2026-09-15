@@ -2444,6 +2444,14 @@ export default function BookingHomeService() {
   };
   const removeService = (code) => setForm((f) => ({ ...f, serviceitems: f.serviceitems.filter((s) => s.code !== code) }));
   const openAddPart = () => { setPartSearch(""); setPartSel([]); setAddModal("part"); };
+  // Tutup pop-up Tambah Part (Kembali/×/klik luar) TANPA part OIL -> hapus jasa Ganti oli plus (wajib ada part OIL).
+  const cancelAddPart = () => {
+    setForm((f) => {
+      const hasOilPart = f.partitems.some((p) => MST_PART_OIL.some((o) => o.code === p.code));
+      return hasOilPart ? f : { ...f, serviceitems: f.serviceitems.filter((s) => !/ganti oli/i.test(s.name)) };
+    });
+    setAddModal(null);
+  };
   const togglePartSel = (code) => setPartSel((a) => (a.includes(code) ? a.filter((c) => c !== code) : [...a, code]));
   const saveAddPart = () => {
     setForm((f) => {
@@ -3546,14 +3554,14 @@ export default function BookingHomeService() {
           let list = base.filter((p) => (!kode || (p.units || []).includes(kode)) && !form.partitems.some((x) => x.code === p.code));
           if (q) list = list.filter((p) => `${p.name} ${p.code}`.toLowerCase().includes(q));
           return (
-            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/45 p-6" onClick={() => setAddModal(null)}>
+            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/45 p-6" onClick={cancelAddPart}>
               <div className="max-h-[86vh] w-full max-w-2xl overflow-auto rounded-2xl bg-white p-6" onClick={(e) => e.stopPropagation()}>
                 <div className="mb-4 flex items-start gap-3">
                   <div>
                     <h3 className="text-lg font-extrabold">{t("booking.part.title")}</h3>
                     <p className="text-[13px] text-slate-500">{t("booking.part.subtitle")}</p>
                   </div>
-                  <button onClick={() => setAddModal(null)} className="ml-auto rounded-lg p-1.5 text-slate-400 hover:bg-gray-100">
+                  <button onClick={cancelAddPart} className="ml-auto rounded-lg p-1.5 text-slate-400 hover:bg-gray-100">
                     <X size={18} />
                   </button>
                 </div>
@@ -3598,7 +3606,7 @@ export default function BookingHomeService() {
                   <EmptyBox title={t("booking.part.emptyTitle")} desc={t("booking.part.emptyDesc")} />
                 )}
                 <div className="mt-6 flex justify-end gap-2.5">
-                  <button onClick={() => setAddModal(null)} className="inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-slate-500 hover:bg-gray-100">
+                  <button onClick={cancelAddPart} className="inline-flex h-10 items-center gap-2 rounded-xl px-4 text-sm font-semibold text-slate-500 hover:bg-gray-100">
                     <ArrowLeft size={16} /> {t("booking.timeslot.back")}
                   </button>
                   <button disabled={!partSel.length} onClick={saveAddPart} className="inline-flex h-10 items-center gap-2 rounded-xl bg-orange-500 px-4 text-sm font-semibold text-white hover:bg-orange-600 disabled:opacity-50">
