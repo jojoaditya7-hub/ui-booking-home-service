@@ -1619,7 +1619,7 @@ const MST_SERVICE = [
 ];
 const svcLabel = s => s.code + ' - ' + s.name;
 const MST_PART = [
-  { code:'90545300000', name:'WASHER OIL BOLT', price:16000, stock:2 }, { code:'90201KVBJ00', name:'BOLT, HEX 10MM', price:11000, discount:5000, stock:20 },
+  { code:'90545300000', name:'WASHER OIL BOLT', price:16000, stock:2 }, { code:'90201KVBJ00', name:'BOLT, HEX 10MM', price:11000, stock:20 },
   { code:'15400KVBJ01', name:'Filter Oli', price:22000, stock:12 }, { code:'31916KVBJ01', name:'Busi Standar (CPR9)', price:25000, stock:30 },
   { code:'23100KVBJ01', name:'V-Belt CVT', price:120000, stock:6 }, { code:'22123KVBJ01', name:'Roller CVT (set)', price:85000, stock:8 },
 ];
@@ -2471,7 +2471,7 @@ function buildPayload(){
     mechanicname: f.mechanicname || null,
     helpermechanicids: (f.helpermechanics || []).map(h => h.id),
     serviceitems: (f.serviceitems || []).map(s => ({ code: s.code, name: s.name, price: s.price, duration: s.duration })),
-    partitems: (f.partitems || []).map(p => ({ code: p.code, name: p.name, price: p.price, discount: p.discount || 0, qty: p.qty })),
+    partitems: (f.partitems || []).map(p => ({ code: p.code, name: p.name, price: p.price, qty: p.qty })),
     createdby: '(dari session user login)',
     // update terpisah ke dbo.mstvehicle saat Simpan (Plat Nomor & Kilometer bisa berubah)
     mstvehicleUpdate: f.unitid ? buildVehicleUpdate() : null,
@@ -2494,7 +2494,7 @@ function saveAddService(){ S.svcSel.forEach(code => { if (!S.form.serviceitems.s
 function openAddPart(){ S.partSearch = ''; S.partSel = []; S.modal = 'addpart'; render(); }
 function setPartSearch(v){ S.partSearch = v; render(); }
 function togglePartSel(code){ S.partSel = S.partSel.includes(code) ? S.partSel.filter(c => c !== code) : S.partSel.concat(code); render(); }
-function saveAddPart(){ S.partSel.forEach(code => { if (!S.form.partitems.some(p => p.code === code)){ const p = MST_PART.find(x => x.code === code); if (p) S.form.partitems.push({ code:p.code, name:p.name, price:p.price, discount:p.discount || 0, qty:1 }); } }); S.modal = null; render(); }
+function saveAddPart(){ S.partSel.forEach(code => { if (!S.form.partitems.some(p => p.code === code)){ const p = MST_PART.find(x => x.code === code); if (p) S.form.partitems.push({ code:p.code, name:p.name, price:p.price, qty:1 }); } }); S.modal = null; render(); }
 function modalHead(title, sub){
   return '<div class="mhead"><div><h3>' + esc(title) + '</h3><p class="msub">' + esc(sub) + '</p></div>' +
     '<button class="icon-btn" onclick="closeModal()">' + ic('x', 18) + '</button></div>';
@@ -2975,11 +2975,10 @@ function cardPart(){
               '<div class="svctitle">' + esc(p.code + ' - ' + p.name) + '</div>' +
               '<div class="svcmeta">' +
                 '<span>' + ic('coins', 15) + rp(p.price) + '</span>' +
-                (p.discount ? '<span>' + ic('tag', 15) + esc(t('booking.form.discount')) + ': ' + rp(p.discount) + '</span>' : '') +
               '</div>' +
             '</div>' +
             '<span class="qty"><button type="button" onclick="partQty(\'' + esc(p.code) + '\',-1)">' + ic('minus', 14) + '</button><b>' + p.qty + '</b><button type="button" onclick="partQty(\'' + esc(p.code) + '\',1)">' + ic('plus', 14) + '</button></span>' +
-            '<span class="ip">' + rp((p.price - (p.discount || 0)) * p.qty) + '</span>' +
+            '<span class="ip">' + rp(p.price * p.qty) + '</span>' +
             '<button type="button" class="svcdel" onclick="removePart(\'' + esc(p.code) + '\')">' + ic('trash', 18) + '</button>' +
           '</div>').join('') + '</div>'
       : emptyBox(t('booking.part.emptyTitle'), t('booking.part.emptyDesc'))) +
@@ -3154,8 +3153,8 @@ function viewBinding(){
       ['Jasa Service (2 level)', 'Tombol <b>Tambah Service</b> &rarr; modal. <b>LEVEL 1</b>: klik <b>+ Paket Service</b> &rarr; daftar PAKET (dari <code>dbo.mstservicepackage.name</code>); pilih satu &rarr; jadi chip. <b>LEVEL 2</b>: muncul <b>HANYA 1 variant</b> yang cocok &mdash; sesuai <b>segment (MATIC/CUB/SPORT/EV)</b> &amp; <b>category (LOW/MID/HIGH)</b> motor dari Kode Tipe Unit kendaraan booking (badge di judul). Pilih &rarr; <b>Simpan</b> &rarr; masuk daftar (nama+durasi+harga), bisa dihapus.', '&mdash;'],
       ['Sumber service (DB: SNEMESIAGEN_SERVICE)', 'Query LEVEL 2: <code>dbo.mstservice sv JOIN dbo.mstservicepackage p ON sv.servicepackageid=p.id (paket dipilih) JOIN dbo.mstmotor mo ON sv.gvmotorsegment=mo.gvsegmentid AND sv.gvmotorcategory=mo.gvcategoryid</code> (motor kendaraan booking, via jembatan kode motor spt Kode Tipe Unit). <b>Harga = <code>dbo.mstserviceprice.price</code></b> (join serviceid, scope <code>gvappliesto</code>). <b>Estimasi waktu (Menit) = <code>dbo.mstservicepackage.estimatetime</code></b> (level paket). <b>Discount TIDAK ditampilkan.</b> Catatan: penamaan segment/category di <code>mstmotor</code> tampak tertukar (segmentname="MID", categoryname="CUB") &mdash; BE perlu konfirmasi arah join gv-nya.', '&mdash;'],
       ['Service Light Repair (auto)', '<b>Light repair TIDAK muncul di pilihan paket.</b> Jasa Light repair otomatis ter-load ke daftar service saat memilih <b>part yang sudah di-mapping</b> ke jasa Light repair (mapping part &rarr; service; belum diimplementasi di mockup).', '&mdash;'],
-      ['Spare Part', 'Tombol <b>Tambah Part</b> &rarr; buka modal "Tambah Part": search + pilih kartu part (multi), klik <b>Simpan</b>. Item spare part yang <b>dibawa mekanik ke rumah customer</b> masuk daftar dengan <b>qty</b> (stepper &minus;/+), subtotal = (harga &minus; discount) &times; qty, bisa dihapus.', '&mdash;'],
-      ['Master service/part', 'Di mockup memakai data DUMMY (MST_SERVICE per kategori + MST_PART). Siap dibinding ke tabel master service &amp; part beserta harga/discount/durasi/stok.', '&mdash;'],
+      ['Spare Part', 'Tombol <b>Tambah Part</b> &rarr; buka modal "Tambah Part": search + pilih kartu part (multi), klik <b>Simpan</b>. Item spare part yang <b>dibawa mekanik ke rumah customer</b> masuk daftar dengan <b>qty</b> (stepper &minus;/+), subtotal = harga &times; qty (tanpa discount), bisa dihapus.', '&mdash;'],
+      ['Master service/part', 'Di mockup memakai data DUMMY (MST_SERVICE per kategori + MST_PART). Siap dibinding ke tabel master service &amp; part beserta harga/durasi/stok (part tanpa discount).', '&mdash;'],
       ['Navigasi', '<b>Kembali</b> &rarr; Langkah 1 (data tidak hilang). <b>Lanjut ke Ringkasan</b> &rarr; Langkah 3 (belum dibuat) &mdash; validasi mekanik utama dulu.', '&mdash;'],
     ]) +
 

@@ -1402,7 +1402,7 @@ const MST_SERVICE = [
 const svcLabel = (s) => `${s.code} - ${s.name}`;
 const MST_PART = [
   { code: "90545300000", name: "WASHER OIL BOLT", price: 16000 },
-  { code: "90201KVBJ00", name: "BOLT, HEX 10MM", price: 11000, discount: 5000 },
+  { code: "90201KVBJ00", name: "BOLT, HEX 10MM", price: 11000 },
   { code: "15400KVBJ01", name: "Filter Oli", price: 22000 },
   { code: "31916KVBJ01", name: "Busi Standar (CPR9)", price: 25000 },
   { code: "23100KVBJ01", name: "V-Belt CVT", price: 120000 },
@@ -1854,7 +1854,7 @@ export function buildPayload(form, dealer = SESSION_DEALER) {
     mechanicname: form.mechanicname || null,
     helpermechanicids: (form.helpermechanics || []).map((h) => h.id),
     serviceitems: (form.serviceitems || []).map((s) => ({ code: s.code, name: s.name, price: s.price, duration: s.duration })),
-    partitems: (form.partitems || []).map((p) => ({ code: p.code, name: p.name, price: p.price, discount: p.discount || 0, qty: p.qty })),
+    partitems: (form.partitems || []).map((p) => ({ code: p.code, name: p.name, price: p.price, qty: p.qty })),
     createdby: "(dari session user login)",
   };
 }
@@ -2407,7 +2407,7 @@ export default function BookingHomeService() {
         .filter((code) => !f.partitems.some((p) => p.code === code))
         .map((code) => {
           const p = MST_PART.find((x) => x.code === code);
-          return { code: p.code, name: p.name, price: p.price, discount: p.discount || 0, qty: 1 };
+          return { code: p.code, name: p.name, price: p.price, qty: 1 };
         });
       return { ...f, partitems: [...f.partitems, ...add] };
     });
@@ -3275,7 +3275,6 @@ export default function BookingHomeService() {
                       <div className="mb-2 text-sm font-extrabold text-orange-600">{p.code} - {p.name}</div>
                       <div className="flex flex-wrap gap-4 text-[13px] text-slate-500">
                         <span className="inline-flex items-center gap-1.5"><Coins size={15} /> {rp(p.price)}</span>
-                        {p.discount ? <span className="inline-flex items-center gap-1.5"><Tag size={15} /> {t("booking.form.discount")}: {rp(p.discount)}</span> : null}
                       </div>
                     </div>
                     <span className="inline-flex flex-none items-center gap-2">
@@ -3287,7 +3286,7 @@ export default function BookingHomeService() {
                         <Plus size={14} />
                       </button>
                     </span>
-                    <span className="min-w-[96px] flex-none text-right text-[13px] tabular-nums text-slate-500">{rp((p.price - (p.discount || 0)) * p.qty)}</span>
+                    <span className="min-w-[96px] flex-none text-right text-[13px] tabular-nums text-slate-500">{rp(p.price * p.qty)}</span>
                     <button type="button" onClick={() => removePart(p.code)} className="flex-none rounded-lg p-1.5 text-red-500 hover:bg-red-50">
                       <Trash2 size={18} />
                     </button>
