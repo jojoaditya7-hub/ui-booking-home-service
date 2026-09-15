@@ -1408,13 +1408,14 @@ const MST_SERVICE = [
   { code: "07U02102", pkgcode: "07", segment: "SPORT", category: "MID", name: "Paket ringan - SPORT - MID", price: 65000, discount: 0, duration: 20 },
 ];
 const svcLabel = (s) => `${s.code} - ${s.name}`;
+// units[] = Kode Tipe Unit (twodigitcode) yg BERELASI dgn part ini (dummy mstpartkendaraan; real: mstpartkendaraan.kodetwodigit).
 const MST_PART = [
-  { code: "90545300000", name: "WASHER OIL BOLT", price: 16000 },
-  { code: "90201KVBJ00", name: "BOLT, HEX 10MM", price: 11000 },
-  { code: "15400KVBJ01", name: "Filter Oli", price: 22000 },
-  { code: "31916KVBJ01", name: "Busi Standar (CPR9)", price: 25000 },
-  { code: "23100KVBJ01", name: "V-Belt CVT", price: 120000 },
-  { code: "22123KVBJ01", name: "Roller CVT (set)", price: 85000 },
+  { code: "90545300000", name: "WASHER OIL BOLT", price: 16000, units: ["VG", "KF", "JM"] },
+  { code: "90201KVBJ00", name: "BOLT, HEX 10MM", price: 11000, units: ["VG", "KF", "JM"] },
+  { code: "15400KVBJ01", name: "Filter Oli", price: 22000, units: ["VG", "KF", "JM"] },
+  { code: "31916KVBJ01", name: "Busi Standar (CPR9)", price: 25000, units: ["VG", "KF", "JM"] },
+  { code: "23100KVBJ01", name: "V-Belt CVT", price: 120000, units: ["VG", "KF"] },
+  { code: "22123KVBJ01", name: "Roller CVT (set)", price: 85000, units: ["VG", "KF"] },
 ];
 // DUMMY part grup OIL + mapping ke unit (seolah SIRIS.dbo.mstpartkendaraan sudah terisi).
 // Di REAL: mstpartkendaraan (kodetwodigit = Kode Tipe Unit) JOIN mstpart JOIN mstpartgroup (name='OIL'); harga dari mstpricepart.
@@ -1424,6 +1425,27 @@ const MST_PART_OIL = [
   { code: "08234-M99-N0LN0", name: "AHM Oil SPX2 SAE 10W-30 0.8L", price: 58000, group: "OIL", units: ["VG", "KF"] },
   { code: "08232-M99-M1LN0", name: "AHM Oil MPX1 SAE 10W-30 1.0L", price: 63000, group: "OIL", units: ["KF"] },
 ];
+// DUMMY mapping part -> jasa Light Repair (HANYA SEBAGIAN part, per unit). Real: SIRIS.dbo.mstmappingpartlr
+// (twodigitcode = Kode Tipe Unit, partcode, pricejasalr = harga jasa LR, frt). Pilih part yg ada di sini -> jasa Light repair auto-muncul.
+const MST_PART_LR = [
+  { partcode: "90201KVBJ00", twodigitcode: "VG", pricejasalr: 15000, frt: 20 },
+  { partcode: "90201KVBJ00", twodigitcode: "KF", pricejasalr: 15000, frt: 20 },
+  { partcode: "90201KVBJ00", twodigitcode: "JM", pricejasalr: 15000, frt: 20 },
+  { partcode: "23100KVBJ01", twodigitcode: "VG", pricejasalr: 45000, frt: 30 },
+  { partcode: "23100KVBJ01", twodigitcode: "KF", pricejasalr: 45000, frt: 30 },
+  { partcode: "22123KVBJ01", twodigitcode: "VG", pricejasalr: 35000, frt: 25 },
+];
+// Hitung ulang jasa Light Repair otomatis dari daftar part (sesuai Kode Tipe Unit). Buang LR lama, tambah untuk part yg ter-mapping.
+function syncLightRepairItems(serviceitems, partitems, kode) {
+  const base = serviceitems.filter((s) => !s.autoLr);
+  partitems.forEach((p) => {
+    const m = MST_PART_LR.find((x) => x.partcode === p.code && x.twodigitcode === kode);
+    if (m && !base.some((s) => s.code === "LR-" + p.code)) {
+      base.push({ code: "LR-" + p.code, name: "Light repair (" + p.name + ")", price: m.pricejasalr, duration: m.frt, autoLr: true });
+    }
+  });
+  return base;
+}
 const rp = (n) => "Rp " + (Number(n) || 0).toLocaleString("id-ID");
 
 /* ------------------------------------------------------------------
@@ -2422,14 +2444,19 @@ export default function BookingHomeService() {
       const add = partSel
         .filter((code) => !f.partitems.some((p) => p.code === code))
         .map((code) => {
-          const p = MST_PART.find((x) => x.code === code);
+          const p = MST_PART.find((x) => x.code === code) || MST_PART_OIL.find((x) => x.code === code);
           return { code: p.code, name: p.name, price: p.price, qty: 1 };
         });
-      return { ...f, partitems: [...f.partitems, ...add] };
+      const partitems = [...f.partitems, ...add];
+      return { ...f, partitems, serviceitems: syncLightRepairItems(f.serviceitems, partitems, f.twodigitcode || "") };
     });
     setAddModal(null);
   };
-  const removePart = (code) => setForm((f) => ({ ...f, partitems: f.partitems.filter((p) => p.code !== code) }));
+  const removePart = (code) =>
+    setForm((f) => {
+      const partitems = f.partitems.filter((p) => p.code !== code);
+      return { ...f, partitems, serviceitems: syncLightRepairItems(f.serviceitems, partitems, f.twodigitcode || "") };
+    });
   const partQty = (code, delta) =>
     setForm((f) => ({ ...f, partitems: f.partitems.map((p) => (p.code === code ? { ...p, qty: Math.max(1, (p.qty || 1) + delta) } : p)) }));
 
@@ -3256,7 +3283,10 @@ export default function BookingHomeService() {
                 {form.serviceitems.map((s) => (
                   <div key={s.code} className="flex items-center gap-3.5 rounded-2xl border border-gray-200 px-4 py-4">
                     <div className="min-w-0 flex-1">
-                      <div className="mb-2 text-sm font-extrabold text-orange-600">{svcLabel(s)}</div>
+                      <div className="mb-2 text-sm font-extrabold text-orange-600">
+                        {svcLabel(s)}
+                        {s.autoLr ? <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-700">Light Repair otomatis</span> : null}
+                      </div>
                       <div className="flex flex-wrap gap-4 text-[13px] text-slate-500">
                         <span className="inline-flex items-center gap-1.5"><Coins size={15} /> {rp(s.price)}</span>
                         {s.duration ? <span className="inline-flex items-center gap-1.5"><Clock size={15} /> {s.duration} {t("booking.form.minute")}</span> : null}
@@ -3505,9 +3535,9 @@ export default function BookingHomeService() {
           // ke Kode Tipe Unit (dummy MST_PART_OIL; real: mstpartkendaraan + mstpartgroup name='OIL').
           const oilMode = form.serviceitems.some((s) => /ganti oli/i.test(s.name));
           const kode = form.twodigitcode || "";
-          let list = oilMode
-            ? MST_PART_OIL.filter((p) => p.units.includes(kode) && !form.partitems.some((x) => x.code === p.code))
-            : MST_PART.filter((p) => !form.partitems.some((x) => x.code === p.code));
+          // part yang tampil = berelasi dgn unit (mstpartkendaraan.kodetwodigit); bila unit tak diketahui, tampil semua.
+          const base = oilMode ? MST_PART_OIL : MST_PART;
+          let list = base.filter((p) => (!kode || (p.units || []).includes(kode)) && !form.partitems.some((x) => x.code === p.code));
           if (q) list = list.filter((p) => `${p.name} ${p.code}`.toLowerCase().includes(q));
           return (
             <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-900/45 p-6" onClick={() => setAddModal(null)}>

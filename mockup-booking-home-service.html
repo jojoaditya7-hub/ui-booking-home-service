@@ -1623,10 +1623,14 @@ const MST_SERVICE = [
   { code:'07U02102', pkgcode:'07', segment:'SPORT', category:'MID',  name:'Paket ringan - SPORT - MID',   price:65000, discount:0, duration:20 },
 ];
 const svcLabel = s => s.code + ' - ' + s.name;
+// units[] = Kode Tipe Unit (twodigitcode) yang BERELASI dgn part ini (dummy mstpartkendaraan; real: mstpartkendaraan.kodetwodigit).
 const MST_PART = [
-  { code:'90545300000', name:'WASHER OIL BOLT', price:16000, stock:2 }, { code:'90201KVBJ00', name:'BOLT, HEX 10MM', price:11000, stock:20 },
-  { code:'15400KVBJ01', name:'Filter Oli', price:22000, stock:12 }, { code:'31916KVBJ01', name:'Busi Standar (CPR9)', price:25000, stock:30 },
-  { code:'23100KVBJ01', name:'V-Belt CVT', price:120000, stock:6 }, { code:'22123KVBJ01', name:'Roller CVT (set)', price:85000, stock:8 },
+  { code:'90545300000', name:'WASHER OIL BOLT',    price:16000, stock:2,  units:['VG','KF','JM'] },
+  { code:'90201KVBJ00', name:'BOLT, HEX 10MM',      price:11000, stock:20, units:['VG','KF','JM'] },
+  { code:'15400KVBJ01', name:'Filter Oli',          price:22000, stock:12, units:['VG','KF','JM'] },
+  { code:'31916KVBJ01', name:'Busi Standar (CPR9)', price:25000, stock:30, units:['VG','KF','JM'] },
+  { code:'23100KVBJ01', name:'V-Belt CVT',          price:120000,stock:6,  units:['VG','KF'] },
+  { code:'22123KVBJ01', name:'Roller CVT (set)',    price:85000, stock:8,  units:['VG','KF'] },
 ];
 // DUMMY part grup OIL + mapping ke unit (seolah SIRIS.dbo.mstpartkendaraan sudah terisi).
 // Di REAL: mstpartkendaraan (kodetwodigit = Kode Tipe Unit) JOIN mstpart JOIN mstpartgroup (name='OIL'); harga dari mstpricepart.
@@ -1635,6 +1639,16 @@ const MST_PART_OIL = [
   { code:'08232-M99-K1LN0', name:'AHM Oil MPX2 SAE 10W-30 0.8L', price:52000, group:'OIL', units:['VG','KF','JM'] },
   { code:'08234-M99-N0LN0', name:'AHM Oil SPX2 SAE 10W-30 0.8L', price:58000, group:'OIL', units:['VG','KF'] },
   { code:'08232-M99-M1LN0', name:'AHM Oil MPX1 SAE 10W-30 1.0L', price:63000, group:'OIL', units:['KF'] },
+];
+// DUMMY mapping part -> jasa Light Repair (HANYA SEBAGIAN part, per unit). Real: SIRIS.dbo.mstmappingpartlr
+// (twodigitcode = Kode Tipe Unit, partcode, pricejasalr = harga jasa LR, frt). Pilih part yg ada di sini -> jasa Light repair auto-muncul.
+const MST_PART_LR = [
+  { partcode:'90201KVBJ00', twodigitcode:'VG', pricejasalr:15000, frt:20 },
+  { partcode:'90201KVBJ00', twodigitcode:'KF', pricejasalr:15000, frt:20 },
+  { partcode:'90201KVBJ00', twodigitcode:'JM', pricejasalr:15000, frt:20 },
+  { partcode:'23100KVBJ01', twodigitcode:'VG', pricejasalr:45000, frt:30 },
+  { partcode:'23100KVBJ01', twodigitcode:'KF', pricejasalr:45000, frt:30 },
+  { partcode:'22123KVBJ01', twodigitcode:'VG', pricejasalr:35000, frt:25 },
 ];
 
 /* =========================================================
@@ -2507,7 +2521,18 @@ function saveAddService(){ S.svcSel.forEach(code => { if (!S.form.serviceitems.s
 function openAddPart(){ S.partSearch = ''; S.partSel = []; S.modal = 'addpart'; render(); }
 function setPartSearch(v){ S.partSearch = v; render(); }
 function togglePartSel(code){ S.partSel = S.partSel.includes(code) ? S.partSel.filter(c => c !== code) : S.partSel.concat(code); render(); }
-function saveAddPart(){ S.partSel.forEach(code => { if (!S.form.partitems.some(p => p.code === code)){ const p = MST_PART.find(x => x.code === code); if (p) S.form.partitems.push({ code:p.code, name:p.name, price:p.price, qty:1 }); } }); S.modal = null; render(); }
+function saveAddPart(){ S.partSel.forEach(code => { if (!S.form.partitems.some(p => p.code === code)){ const p = MST_PART.find(x => x.code === code) || MST_PART_OIL.find(x => x.code === code); if (p) S.form.partitems.push({ code:p.code, name:p.name, price:p.price, qty:1 }); } }); syncLightRepair(); S.modal = null; render(); }
+// Auto-load jasa Light Repair utk part yg ter-mapping (dummy MST_PART_LR ~ mstmappingpartlr) sesuai Kode Tipe Unit. Hanya sebagian part yg ter-mapping.
+function syncLightRepair(){
+  const kode = S.form.twodigitcode || '';
+  S.form.serviceitems = S.form.serviceitems.filter(s => !s.autoLr);   // buang LR otomatis lama
+  S.form.partitems.forEach(p => {
+    const m = MST_PART_LR.find(x => x.partcode === p.code && x.twodigitcode === kode);
+    if (m && !S.form.serviceitems.some(s => s.code === 'LR-' + p.code)){
+      S.form.serviceitems.push({ code:'LR-' + p.code, name:'Light repair (' + p.name + ')', price:m.pricejasalr, duration:m.frt, autoLr:true });
+    }
+  });
+}
 function modalHead(title, sub){
   return '<div class="mhead"><div><h3>' + esc(title) + '</h3><p class="msub">' + esc(sub) + '</p></div>' +
     '<button class="icon-btn" onclick="closeModal()">' + ic('x', 18) + '</button></div>';
@@ -2573,9 +2598,9 @@ function modalAddPart(){
   // yang ter-mapping ke Kode Tipe Unit kendaraan (dummy MST_PART_OIL; real: mstpartkendaraan + mstpartgroup name='OIL').
   const oilMode = S.form.serviceitems.some(s => /ganti oli/i.test(s.name));
   const kode = S.form.twodigitcode || '';
-  let list = oilMode
-    ? MST_PART_OIL.filter(p => p.units.includes(kode) && !S.form.partitems.some(x => x.code === p.code))
-    : MST_PART.filter(p => !S.form.partitems.some(x => x.code === p.code));
+  // part yang tampil = berelasi dgn unit (mstpartkendaraan.kodetwodigit); bila unit tak diketahui, tampil semua.
+  const base = oilMode ? MST_PART_OIL : MST_PART;
+  let list = base.filter(p => (!kode || (p.units || []).includes(kode)) && !S.form.partitems.some(x => x.code === p.code));
   if (q) list = list.filter(p => (p.name + ' ' + p.code).toLowerCase().includes(q));
   const oilNote = oilMode
     ? '<div class="hint" style="margin:10px 0 0;padding:8px 12px;border:1px solid var(--warning);background:var(--warning-bg);border-radius:8px">Mode <b>Ganti oli plus</b>: hanya part grup <b>OIL</b> yang ter-mapping ke unit <b>' + esc(kode || '-') + '</b> (cek <code>mstpartkendaraan</code>).</div>'
@@ -2978,7 +3003,7 @@ function cardService(){
       ? '<div class="svclist">' + S.form.serviceitems.map(s =>
           '<div class="svcitem">' +
             '<div class="svcbody">' +
-              '<div class="svctitle">' + esc(svcLabel(s)) + '</div>' +
+              '<div class="svctitle">' + esc(svcLabel(s)) + (s.autoLr ? ' <span class="segbadge">Light Repair otomatis</span>' : '') + '</div>' +
               '<div class="svcmeta">' +
                 '<span>' + ic('coins', 15) + rp(s.price) + '</span>' +
                 (s.duration ? '<span>' + ic('clock', 15) + s.duration + ' ' + esc(t('booking.form.minute')) + '</span>' : '') +
@@ -3030,7 +3055,7 @@ function removeHelper(id){ S.form.helpermechanics = S.form.helpermechanics.filte
 function addService(code){ if (code && !S.form.serviceitems.some(s => s.code === code)){ const s = MST_SERVICE.find(x => x.code === code); if (s) S.form.serviceitems.push({ code:s.code, name:s.name, price:s.price }); } S.openCombo = null; render(); }
 function removeService(code){ S.form.serviceitems = S.form.serviceitems.filter(s => s.code !== code); render(); }
 function addPart(code){ if (code && !S.form.partitems.some(p => p.code === code)){ const p = MST_PART.find(x => x.code === code); if (p) S.form.partitems.push({ code:p.code, name:p.name, price:p.price, qty:1 }); } S.openCombo = null; render(); }
-function removePart(code){ S.form.partitems = S.form.partitems.filter(p => p.code !== code); render(); }
+function removePart(code){ S.form.partitems = S.form.partitems.filter(p => p.code !== code); syncLightRepair(); render(); }
 function partQty(code, delta){ const p = S.form.partitems.find(x => x.code === code); if (p){ p.qty = Math.max(1, (p.qty || 1) + delta); render(); } }
 
 /* =========================================================
@@ -3180,8 +3205,8 @@ function viewBinding(){
       ['Jasa Service (2 level)', 'Tombol <b>Tambah Service</b> &rarr; modal. <b>LEVEL 1</b>: klik <b>+ Paket Service</b> &rarr; daftar PAKET (dari <code>dbo.mstservicepackage.name</code>) &mdash; <b>hanya paket yang DIIZINKAN untuk Home Service</b> (di mockup dibatasi dummy <code>[06,07,11]</code>; di real WAJIB cek tabel setting &mdash; lihat baris "Filter paket" di bawah); pilih satu &rarr; jadi chip. <b>LEVEL 2</b>: muncul <b>HANYA 1 variant</b> yang cocok &mdash; sesuai <b>segment (MATIC/CUB/SPORT/EV)</b> &amp; <b>category (LOW/MID/HIGH)</b> motor dari Kode Tipe Unit kendaraan booking (badge di judul). Pilih &rarr; <b>Simpan</b> &rarr; masuk daftar (nama+durasi+harga), bisa dihapus. <b>Jasa yang sudah dipilih tidak bisa dipilih lagi</b>: variant hilang dari LEVEL 2, dan bila semua variant sebuah paket sudah dipilih, paketnya ikut hilang dari LEVEL 1.', '&mdash;'],
       ['Filter paket (DB: SNEMESIAGEN_SETTING)', '<b>Daftar paket di Tambah Pekerjaan Home Service WAJIB dibatasi oleh setting</b>, bukan menampilkan semua <code>mstservicepackage</code>. Sumber: <code>dbo.mstsettingsdmsdtl d JOIN dbo.mstsettingsdms h ON h.id=d.headerid</code> dengan <code>h.settingname=\x27Paket Service Home Service\x27</code> (atau settingcode tetap), <code>h.isactive AND d.isactive</code>, <code>d.tag1 = mstservicepackage.jobid</code> (jobid paket yg diizinkan), scope dealer via <code>d.nmscode</code> (kosong = berlaku semua dealer). Karena <b>SETTING &amp; SERVICE beda database</b> (Postgres tak bisa query lintas-DB), BE ambil daftar jobid diizinkan dari SETTING dulu, lalu filter <code>mstservicepackage WHERE status=1 AND jobid = ANY(:diizinkan)</code>. Di mockup disimulasikan konstanta <code>HS_ALLOWED_PKG=[06,07,11]</code>.', '&mdash;'],
       ['Sumber service (DB: SNEMESIAGEN_SERVICE)', 'Query LEVEL 2: <code>dbo.mstservice sv JOIN dbo.mstservicepackage p ON sv.servicepackageid=p.id</code> (paket dipilih) <code>JOIN dbo.mstmotor mo ON sv.gvmotorsegment=mo.gvsegmentid AND sv.gvmotorcategory=mo.gvcategoryid</code> (motor kendaraan booking). <b>PENTING &mdash; penamaan di <code>mstmotor</code> TERBALIK (sudah diverifikasi ke DB 15 Sep 2026):</b> kolom <code>segmentname</code> berisi <b>LOW/MID/HI = tingkatan</b> (yang di FE disebut <b>category</b> Low/Mid/High), kolom <code>categoryname</code> berisi <b>AT/CUB/SPORT/EV = jenis motor</b> (yang di FE disebut <b>segment</b>; <b>AT = Matic</b>, <b>HI = High</b>). Maka pemetaannya: FE <b>segment</b> &rarr; <code>mo.gvcategoryid</code> (= <code>sv.gvmotorcategory</code>); FE <b>category</b> &rarr; <code>mo.gvsegmentid</code> (= <code>sv.gvmotorsegment</code>). <b>Harga = <code>dbo.mstserviceprice.price</code></b> (join <code>serviceid=sv.id</code>, scope <code>gvappliesto</code>). <b>Estimasi waktu (Menit) = <code>dbo.mstservicepackage.estimatetime</code></b> (level paket). <b>Discount TIDAK ditampilkan.</b> <b>CATATAN DATA: <code>mstservice</code> &amp; <code>mstserviceprice</code> saat ini masih KOSONG (0 baris) &mdash; BE wajib mengisi variant + harga; <code>mstservicepackage</code> (23 baris) &amp; <code>mstmotor</code> (1006) sudah terisi.</b>', '&mdash;'],
-      ['Service Light Repair (auto)', '<b>Light repair TIDAK muncul di pilihan paket.</b> Jasa Light repair otomatis ter-load ke daftar service saat memilih <b>part yang sudah di-mapping</b> ke jasa Light repair (mapping part &rarr; service; belum diimplementasi di mockup).', '&mdash;'],
-      ['Spare Part', 'Tombol <b>Tambah Part</b> &rarr; buka modal "Tambah Part": search + pilih kartu part (multi), klik <b>Simpan</b>. Item spare part yang <b>dibawa mekanik ke rumah customer</b> masuk daftar dengan <b>qty</b> (stepper &minus;/+), subtotal = harga &times; qty (tanpa discount), bisa dihapus.', '&mdash;'],
+      ['Jasa Light Repair otomatis (DB: SIRIS)', '<b>Light repair TIDAK muncul di pilihan paket.</b> Jasa Light repair <b>otomatis ter-load</b> ke daftar service saat memilih <b>part yang ter-mapping</b> ke jasa Light repair. Sumber: <code>dbo.mstmappingpartlr</code> &mdash; filter <code>twodigitcode = &lt;Kode Tipe Unit booking&gt;</code> AND <code>partcode = &lt;part dipilih&gt;</code> (bisa via <code>partid</code>). Bila ketemu &rarr; tambah 1 baris jasa Light repair dgn <b>harga = <code>pricejasalr</code></b> dan durasi/<code>frt</code>. <b>Tidak semua part ter-mapping</b> &mdash; hanya yang ada di <code>mstmappingpartlr</code>. Kalau part dihapus, jasa LR otomatisnya ikut hilang. <b>CATATAN DATA: <code>mstmappingpartlr</code> ada 5 baris (unit CL/GB/CH/CG/GD), tapi belum untuk unit demo</b> &mdash; di mockup disimulasikan <code>MST_PART_LR</code> (partcode+twodigitcode&rarr;pricejasalr/frt).', '&mdash;'],
+      ['Spare Part', 'Tombol <b>Tambah Part</b> &rarr; buka modal "Tambah Part": daftar part <b>yang BERELASI dgn unit</b> (cek <code>SIRIS.dbo.mstpartkendaraan</code>, filter <code>kodetwodigit = &lt;Kode Tipe Unit&gt;</code>; di mockup: <code>MST_PART.units[]</code>). Search + pilih kartu part (multi), klik <b>Simpan</b>. Item spare part yang <b>dibawa mekanik ke rumah customer</b> masuk daftar dengan <b>qty</b> (stepper &minus;/+), subtotal = harga &times; qty (tanpa discount), bisa dihapus. (Bila jasa Ganti oli plus dipilih &rarr; picker beralih ke grup OIL, lihat baris di atas.)', '&mdash;'],
       ['Part OIL saat Ganti oli plus (DB: SIRIS)', 'Bila jasa <b>Ganti oli plus</b> ada di daftar service, picker Tambah Part <b>hanya menampilkan part grup OIL yang ter-mapping ke unit</b>. Query: <code>dbo.mstpartkendaraan pk JOIN dbo.mstpart p ON p.id=pk.partid JOIN dbo.mstpartgroup g ON g.id=p.partgroupid</code>, filter <code>pk.kodetwodigit = &lt;Kode Tipe Unit booking&gt;</code> (mis. VG/KF/JM) <b>AND <code>upper(g.name)=\x27OIL\x27</code></b> (jangan pakai <code>partgroupcode</code> karena ada grup OIL duplikat: code OIL/00231/TRY11). Harga = <code>dbo.mstpricepart.unitpricerpt</code> (partcode, ambil <code>effectivedate</code> terbaru; per dealer: <code>mstpricepartdealer</code>). <b>CATATAN DATA: <code>mstpartkendaraan</code> masih KOSONG (0 baris) &mdash; BE wajib mengisi mapping unit&harr;part; grup OIL juga perlu dirapikan (duplikat). Di mockup disimulasikan <code>MST_PART_OIL</code> (units[] = daftar kodetwodigit).</b>', '&mdash;'],
       ['Master service/part', 'Di mockup memakai data DUMMY (MST_SERVICE per kategori + MST_PART). Siap dibinding ke tabel master service &amp; part beserta harga/durasi/stok (part tanpa discount).', '&mdash;'],
       ['Navigasi', '<b>Kembali</b> &rarr; Langkah 1 (data tidak hilang). <b>Lanjut ke Ringkasan</b> &rarr; Langkah 3 (belum dibuat) &mdash; validasi mekanik utama dulu.', '&mdash;'],
